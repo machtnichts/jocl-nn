@@ -22,7 +22,7 @@ public class Main {
   public final static int HIDDEN_LAYER_SIZE=8;
 
   public static void main(String[] args) throws IOException {
-    int botSize = 4096*16;
+    int botSize = 512*512;
 
     double[] input = new double[INPUT_LAYER_SIZE];
     for(int i=0; i<input.length;i++)
@@ -257,6 +257,11 @@ public class Main {
     // Set the work-item dimensions
     long[] global_work_size = new long[]{bots.size()};
 
+
+    long uploadDuration = Duration.between(start,Instant.now()).toMillis();
+    System.out.println("jocl UPLOAD duration: "+uploadDuration + " ms");
+
+    start = Instant.now();
     // Execute the kernel
     clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
         global_work_size, null, 0, null, null);
@@ -265,13 +270,17 @@ public class Main {
     clEnqueueReadBuffer(commandQueue, dstMemOutputArray, CL_TRUE, 0,
         (long) outputArray.length * Sizeof.cl_double, outputPointer, 0, null, null);
 
+    long duration = Duration.between(start,Instant.now()).toMillis();
+    System.out.println("java jocl duration: "+duration + " ms");
+
+    start = Instant.now();
     // Release kernel, program, and memory objects
     clReleaseMemObject(srcMemInputArray);
     clReleaseMemObject(srcMemWeightsArray);
     clReleaseMemObject(dstMemOutputArray);
+    long releaseDuration = Duration.between(start,Instant.now()).toMillis();
+    System.out.println("jocl RELEASE duration: "+releaseDuration + " ms");
 
-    long duration = Duration.between(start,Instant.now()).toMillis();
-    System.out.println("java jocl duration: "+duration + " ms");
 
     double[] lastResult = Arrays.copyOfRange(outputArray,outputArray.length-OUTPUT_LAYER_SIZE,outputArray.length);
     System.out.println("Last result: "+Arrays.toString(lastResult));
